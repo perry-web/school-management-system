@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        <h1>School Management System</h1>
+        <div class="add-student">
+            <h2>Add New Student</h2>
+            <form id="add-student-form">
+                <input type="text" id="name" placeholder="Enter Student Name">
+                <input type="number" id="age" placeholder="Enter Student Age">
+                <input type="text" id="grades" placeholder="Enter Grades (comma-separated)">
+                <button type="submit">Add Student</button>
+            </form>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Grades</th>
+                        <th>Average</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch student data from the backend
+        async function fetchStudents() {
+            try {
+                const response = await fetch('/students');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch students');
+                }
+                const studentDict = await response.json();
+                return studentDict;
+            } catch (error) {
+                console.error('Error fetching students:', error);
+                return {};
+            }
+        }
+
+        // Function to calculate average grade
+        function calculateAverage(grades) {
+            if (grades.length === 0) {
+                return 0;
+            }
+            const sum = grades.reduce((acc, grade) => acc + grade, 0);
+            return (sum / grades.length).toFixed(2);
+        }
+
+        // Function to display student details
+        async function displayStudents() {
+            const studentDict = await fetchStudents();
+            const tbody = document.getElementById("studentTable");
+            tbody.innerHTML = ""; // Clear existing rows
+
+            for (const [name, { age, grades }] of Object.entries(studentDict)) {
+                const avgGrade = calculateAverage(grades);
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${age}</td>
+                    <td>${grades.join(", ")}</td>
+                    <td>${avgGrade}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // Function to add a new student
+        document.getElementById("add-student-form").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const name = document.getElementById("name").value;
+            const age = parseInt(document.getElementById("age").value);
+            const grades = document.getElementById("grades").value.split(",").map(Number);
+
+            try {
+                // Send data to the backend
+                const response = await fetch('/add_student', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, age, grades }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add student');
+                }
+
+                const result = await response.json();
+                alert(result.message);
+
+                // Refresh the student list
+                displayStudents();
+
+                // Clear the form
+                document.getElementById("add-student-form").reset();
+            } catch (error) {
+                console.error('Error adding student:', error);
+                alert('Failed to add student');
+            }
+        });
+
+        // Initial display of students
+        document.addEventListener("DOMContentLoaded", function () {
+            displayStudents();
+        });
+    </script>
+</body>
+
+</html>
